@@ -30,6 +30,11 @@ export abstract class Component<T> {
         }
     }
 
+    //установить класс 
+    protected setClass(element: HTMLElement, className: string) {
+        element.classList.add(className);
+      }
+
     // Скрыть
     protected setHidden(element: HTMLElement) {
         element.style.display = 'none';

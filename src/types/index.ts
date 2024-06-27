@@ -11,6 +11,11 @@ export interface IProduct {
     selected?: boolean;         // Флаг, указывающий, выбран ли продукт
 }
 
+// Действия выполняемые с карточкой товара
+export interface ICardActions {
+    onClick: (event: MouseEvent) => void;
+}
+
 /**
  * Интерфейс, описывающий методы модели для управления продуктами.
  */
@@ -86,6 +91,13 @@ export interface IOrderForm {
 export interface IOrderResult {
     id: number;          // Идентификатор заказа
     total: number;       // Общая стоимость заказа
+}
+
+// Отображение корзины
+export interface IBasketView {
+    items: HTMLElement[];
+    total: number | string;
+    selected: string[];
 }
 
 /**

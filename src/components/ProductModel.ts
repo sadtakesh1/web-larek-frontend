@@ -20,6 +20,7 @@ export class ProductModel implements IProductModel {
         this.previewId = id;
         this.events.emit('preview: changed', { id });
     }
+    
     //для проверки с tempData
     getItem(id: string) {
         return this.catalog.find((item) => item.id === id);
