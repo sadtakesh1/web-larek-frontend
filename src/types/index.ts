@@ -11,56 +11,15 @@ export interface IProduct {
     selected?: boolean;         // Флаг, указывающий, выбран ли продукт
 }
 
+// Карточка товара
+export interface ICard extends IProduct {
+	buttonText: string;
+	itemCount: number | string;
+}
+
 // Действия выполняемые с карточкой товара
 export interface ICardActions {
     onClick: (event: MouseEvent) => void;
-}
-
-/**
- * Интерфейс, описывающий методы модели для управления продуктами.
- */
-export interface IProductModel {
-    // Устанавливает каталог продуктов.
-    setCatalog(item: IProduct[]): void;
-
-    // Устанавливает продукт для предпросмотра по его идентификатору.
-    setPreview(id: string): void;
-
-    // Добавляет продукт в корзину по его идентификатору с возможностью частичного обновления данных продукта.
-    addProductToBasket(id: string, data: Partial<IProduct>): void;
-
-    // Удаляет продукт из корзины по его идентификатору.
-    removeProductFromBasket(id: string): void;
-
-    // Переключает состояние продукта по его идентификатору с возможностью частичного обновления данных продукта.
-    toggleProductState(id: string, data: Partial<IProduct>): void;
-
-    // Проверяет, находится ли продукт в корзине.
-    isProductInBasket(id: string): boolean;
-
-    // Возвращает количество продуктов в корзине.
-    getBasketCounter(): number;
-
-    // Возвращает массив продуктов в корзине.
-    getBasketProducts(): TBasketCard[];
-
-    // Возвращает общую стоимость продуктов в корзине.
-    getTotal(): number;
-
-    // Устанавливает общую стоимость заказа.
-    setOrderTotal(): void;
-
-    // Очищает корзину.
-    clearBasket(): void;
-
-    // Устанавливает поля заказа.
-    setOrderField(): void;
-
-    // Проверяет валидность заказа.
-    validateOrder(): boolean;
-
-    // Проверяет валидность контактной информации.
-    validateContacts(): boolean;
 }
 
 /**
@@ -108,4 +67,26 @@ export type TBasketCard = Pick<IProduct, 'id' | 'title' | 'price'>;
 /**
  * Тип, представляющий ошибки формы заказа, где ключи соответствуют полям формы, а значения - сообщениям об ошибках.
  */
-export type FormErrors = Partial<Record<keyof IOrder, string>>;
+
+// Контакты покупателя
+export interface IContactsForm {
+    email: string;
+    phone: string;
+}
+
+export interface IContacts extends IContactsForm {
+    items: string[];
+}
+
+export interface ISuccessActions {
+    onClick: () => void;
+}
+
+// Оформление заказа
+export interface ISuccess {
+    id: string;
+    total: number;
+}
+
+export type FormErrorsOrder = Partial<Record<keyof IOrder, string>>;
+export type FormErrorsContacts = Partial<Record<keyof IContacts, string>>;

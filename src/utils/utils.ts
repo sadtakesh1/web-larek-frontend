@@ -3,7 +3,7 @@ export function pascalToKebab(value: string): string {
 }
 
 export function isSelector(x: any): x is string {
-    return (typeof x === "string") && x.length > 1;
+    return (typeof x === 'string') && x.length > 1;
 }
 
 export function isEmpty(value: any): boolean {
@@ -132,4 +132,16 @@ export function createElement<
         }
     }
     return element;
+}
+
+interface ElementWithToggleClass extends Element {
+    toggleClass(className: string, force?: boolean): void;
+}
+
+export function toggleClass(element: ElementWithToggleClass, className: string, force?: boolean) {
+    if (force === undefined) {
+        element.classList.toggle(className);
+    } else {
+        element.classList.toggle(className, force);
+    }
 }

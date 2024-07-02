@@ -1,120 +1,116 @@
-import { IProduct, IProductModel, TBasketCard } from "../types";
+import { IOrder, IProduct, FormErrorsContacts, FormErrorsOrder, IOrderForm, IContactsForm } from "../types";
 import { IEvents } from "./base/events";
+import { Model } from "./base/model";
 
-export class ProductModel implements IProductModel {
-    private catalog: IProduct[] = [];
-    private previewId: string | null = null; // Тип изменен на string
-    private basket: Set<string> = new Set(); // Тип изменен на string
-    private orderTotal: number = 0;
+export type ProductStatus = 'basket' | 'sell';
 
-    constructor(protected events: IEvents) { }
+export type CatalogChangeEvent = {
+	catalog: ProductItem[];
+};
 
-    //Устанавливает каталог продуктов и инициирует событие 'catalog: changed'.
-    setCatalog(item: IProduct[]) {
-        this.catalog = item;
-        this.events.emit('catalog: changed', item);
+export class ProductItem extends Model<IProduct> {
+    id: string;
+    description: string;
+    image: string;
+    title: string;
+    category: string;
+    price: number | null;
+    status: ProductStatus = 'sell';
+    itemCount: number;
+}
+
+export class ProductModel extends ProductItem {
+    basketList: ProductItem[] = [];
+    catalog: ProductItem[];
+    order: IOrder = {
+        address: '',
+        items: [],
+        email: '',
+        phone: '',
+        total: 0,
+        payment: 'card',
     }
+    formErrorsOrder: FormErrorsOrder = {};
+    formErrorsContacts: FormErrorsContacts = {};
 
-    //Устанавливает продукт для предпросмотра и инициирует событие 'preview: changed'.
-    setPreview(id: string) {
-        this.previewId = id;
-        this.events.emit('preview: changed', { id });
-    }
-    
-    //для проверки с tempData
-    getItem(id: string) {
-        return this.catalog.find((item) => item.id === id);
-    }
-    //для проверки с tempData
-    getItems() {
-        return this.catalog;
-    }
+    setCatalog(items: IProduct[]) {
+		this.catalog = items.map((item) => new ProductItem(item, this.events));
+		this.emitChanges('catalog:install', { catalog: this.catalog });
+	}
 
-    //Добавляет продукт в корзину по идентификатору и инициирует событие 'basket: changed'.
-    addProductToBasket(id: string) {
-        const product = this.catalog.find(product => product.id === id);
-        if (product) {
-            this.basket.add(id);
-            this.events.emit('basket: changed');
+    //Переключает состояние продукта и инициирует событие.
+    toggleBasketList(item: ProductItem) {
+        if (item.status === 'sell' && item.price !== null) {
+            this.basketList.push(item);
+            item.status = 'basket';
+            item.itemCount = this.basketList.length;
+            this.emitChanges('basket:changed', this.basketList);
+        } else if (item.status === 'basket') {
+            this.basketList = this.basketList.filter((it) => it !== item);
+            item.status = 'sell';
+            item.itemCount = this.basketList.length;
+            this.emitChanges('basket:changed', this.basketList);
         }
-    }
-
-    //Удаляет продукт из корзины по идентификатору и инициирует событие 'basket: changed'.
-    removeProductFromBasket(id: string) {
-        if (this.basket.has(id)) {
-            this.basket.delete(id);
-            this.events.emit('basket: changed');
-        }
-    }
-
-    //Переключает состояние продукта и инициирует событие 'product: stateChanged'.
-    toggleProductState(id: string, data: Partial<IProduct>) {
-        const product = this.catalog.find(product => product.id === id);
-        if (product) {
-            Object.assign(product, data);
-            this.events.emit('product: stateChanged', { id, data });
-        }
-    }
-
-    //Проверяет, находится ли продукт в корзине.
-    isProductInBasket(id: string) {
-        return this.basket.has(id);
-    }
-
-    //Возвращает количество продуктов в корзине.
-    getBasketCounter() {
-        return this.basket.size;
-    }
-
-    //Возвращает массив продуктов в корзине.
-    getBasketProducts(): TBasketCard[] {
-        return Array.from(this.basket).map(id => {
-            const product = this.catalog.find(product => product.id === id);
-            if (product) {
-                return {
-                    id: product.id,
-                    title: product.title,
-                    price: product.price,
-                };
-            }
-            return null;
-        }).filter((item): item is TBasketCard => item !== null);
     }
 
     //Возвращает общую стоимость продуктов в корзине.
     getTotal() {
-        return this.getBasketProducts().reduce((total, product) => total + (product.price || 0), 0);
-    }
-
-    //Устанавливает общую стоимость заказа и инициирует событие 'order: totalSet'.
-    setOrderTotal() {
-        this.orderTotal = this.getTotal();
-        this.events.emit('order: totalSet', { total: this.orderTotal });
-    }
+		return this.basketList.reduce((a, c) => a + c.price, 0);
+	}
 
     //Очищает корзину и инициирует событие 'basket: cleared'.
     clearBasket() {
-        this.basket.clear();
-        this.events.emit('basket: cleared');
-    }
+		this.basketList.forEach((item) => {
+			item.status = 'sell';
+		});
+		this.basketList = [];
+	}
 
     //Устанавливает поля заказа и инициирует событие 'order: fieldSet'.
-    setOrderField() {
-        // Реализация установки полей заказа
-        this.events.emit('order: fieldSet');
+    setOrderField(field: keyof IOrderForm, value: string) {
+        this.order[field] = value;
+
+        if (this.validateOrder()) {
+            this.events.emit('order:ready', this.order);
+        }
     }
 
     //Проверяет валидность заказа и инициирует событие 'order: validated'.
     validateOrder() {
-        const isValid = this.basket.size > 0 && this.orderTotal > 0;
-        this.events.emit('order: validated', { isValid });
-        return isValid;
+        const errors: typeof this.formErrorsOrder = {};
+
+        if (!this.order.address) {
+            errors.address = 'Необходимо указать адрес';
+        }
+        this.formErrorsOrder = errors;
+        this.events.emit('formErrorsOrder:change', this.formErrorsOrder);
+
+        return Object.keys(errors).length === 0;
     }
     //Проверяет валидность контактной информации и инициирует событие 'contacts: validated'.
     validateContacts() {
-        // Реализация валидации контактной информации
-        const isValid = true; // Предположим, что валидация успешна для примера
-        this.events.emit('contacts: validated', { isValid });
-        return isValid;
+        const errors: typeof this.formErrorsContacts = {};
+
+        if (!this.order.email) {
+            errors.email = 'Необходимо указать email';
+        }
+        if (!this.order.phone) {
+            errors.phone = 'Необходимо указать телефон';
+        }
+        this.formErrorsContacts = errors;
+        this.events.emit('formErrorsContacts:change', this.formErrorsContacts);
+
+        return Object.keys(errors).length === 0;
+    }
+
+    setContactsField(field: keyof IContactsForm, value: string) {
+        this.order[field] = value;
+        if (this.validateContacts()) {
+            this.events.emit('contacts:ready', this.order);
+        }
+    }
+
+    getBasketList(): ProductItem[] {
+        return this.basketList;
     }
 }
